@@ -1,0 +1,1 @@
+web: pipenv run gunicorn 'service.microservice:start_service()'
