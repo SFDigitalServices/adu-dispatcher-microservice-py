@@ -1,6 +1,11 @@
 {
   "addons": [
-
+    {
+      "plan": "heroku-postgresql:hobby-dev",
+      "options": {
+        "version": "11.5"
+      }
+    }
   ],
   "buildpacks": [
     {
@@ -13,6 +18,7 @@
   },
   "name": "adu-dispatcher-microservice-py",
   "scripts": {
+    "postdeploy": "pipenv run alembic upgrade head"
   },
   "stack": "heroku-18"
 }
