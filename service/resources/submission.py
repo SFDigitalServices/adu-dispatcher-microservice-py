@@ -4,6 +4,7 @@ import falcon
 from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
 from sqlalchemy.sql import func
+from .hooks import validate_access
 
 # from pprint import pprint
 
@@ -15,6 +16,7 @@ class Submission(Base):
     data = sa.Column('data', sa.Text, nullable=False)
     date_created = sa.Column('date_created', sa.DateTime(timezone=True), server_default=func.now())
 
+@falcon.before(validate_access)
 class SubmissionResource:
     
     def on_post(self, req, resp):

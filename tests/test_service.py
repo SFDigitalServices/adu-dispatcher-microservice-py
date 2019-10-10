@@ -52,7 +52,7 @@ def test_default_error(client, mock_env_access_key):
     expected_msg_error = jsend.error('404 - Not Found')
     assert json.loads(response.content) == expected_msg_error
 
-def test_create_submission(client):
+def test_create_submission(client, mock_env_access_key):
     body = {
         'data': '{"foo":"bar"}'
     }
@@ -62,3 +62,8 @@ def test_create_submission(client):
 
     response_json = json.loads(response.text)
     assert isinstance(response_json["data"]["submission_id"], int)
+
+    """Test submission request with no ACCESS_KEY in header"""
+    client_no_access_key = testing.TestClient(service.microservice.start_service())
+    response = client_no_access_key.simulate_post('/submissions', body = urlencode(body), headers = headers)
+    assert response.status_code == 403
