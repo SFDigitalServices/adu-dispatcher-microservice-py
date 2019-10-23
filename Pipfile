@@ -16,6 +16,7 @@ pytest-cov = "*"
 alembic = "*"
 psycopg2 = "*"
 sqlalchemy = "*"
+rq = "*"
 
 [requires]
 python_version = "3.7"

@@ -5,6 +5,12 @@
       "options": {
         "version": "11"
       }
+    },
+    {
+      "plan": "heroku-redis:hobby-dev",
+      "options": {
+        "version": "5.0.4"
+      }
     }
   ],
   "buildpacks": [
