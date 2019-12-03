@@ -34,7 +34,7 @@ class SubmissionResource:
     
     def on_post(self, req, resp):
         # log submission to database
-        submission = create_submission(self.session, json.dumps(req.params))
+        submission = create_submission(self.session, req.params)
         # schedule dispatch to external systems
         jobs_scheduled = jobs.schedule(submission_obj=submission, systems_dict=jobs.external_systems)
 
