@@ -1,5 +1,6 @@
 # pylint: disable=redefined-outer-name
 """Tests for microservice"""
+import os
 import json
 import jsend
 import pytest
@@ -34,6 +35,11 @@ def client():
     return testing.TestClient(app=service.microservice.start_service(), headers=CLIENT_HEADERS)
 
 @pytest.fixture()
+def client_no_db():
+    with patch.dict(os.environ,{'DATABASE_URL':'postgresql://localhost/not_a_db'}):
+        return testing.TestClient(app=service.microservice.start_service(), headers=CLIENT_HEADERS)
+
+@pytest.fixture()
 def queue():
     """ redis queue """
     return Queue(is_async=False, connection=FakeStrictRedis())
@@ -45,6 +51,10 @@ def mock_env_access_key(monkeypatch):
 @pytest.fixture
 def mock_env_no_access_key(monkeypatch):
     monkeypatch.delenv("ACCESS_KEY", raising=False)
+
+@pytest.fixture
+def no_queue():
+    return Queue(is_async=False, connection=Redis(host='fake_redis_host'))
 
 @pytest.fixture
 def mock_external_system_env(monkeypatch):
@@ -169,3 +179,23 @@ def test_external_404(client, queue, mock_env_access_key, mock_external_system_e
             response_json = json.loads(response.text)
             # top level external systems should have been scheduled
             assert len(response_json["data"]["job_ids"]) == len(mock_external_systems.keys())
+
+def test_db_down(client_no_db, queue, mock_env_access_key, mock_external_system_env):
+    # test when unable to connect to db
+    body = {
+        'data': '{"test": "test_db_down"}'
+    }
+
+    response = client_no_db.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+    assert response.status_code == 500
+
+def test_redis_down(client, no_queue, mock_env_access_key, mock_external_system_env):
+    # test when unable to connect to redis
+    body = {
+        'data': 'test_redis_down'
+    }
+
+    with patch('service.resources.jobs.get_queue') as mock_queue:
+        mock_queue.return_value = queue
+        response = client.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+        assert response.status_code == 500

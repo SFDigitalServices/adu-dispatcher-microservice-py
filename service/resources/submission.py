@@ -33,17 +33,25 @@ class ExternalId(Base):
 class SubmissionResource:
     
     def on_post(self, req, resp):
-        # log submission to database
-        submission = create_submission(self.session, req.params)
-        # schedule dispatch to external systems
-        jobs_scheduled = jobs.schedule(submission_obj=submission, systems_dict=jobs.external_systems)
+        submission = None
+        try:
+            # log submission to database
+            submission = create_submission(self.session, req.params)
+            # schedule dispatch to external systems
+            jobs_scheduled = jobs.schedule(submission_obj=submission, systems_dict=jobs.external_systems)
 
-        # return adu dispatcher id
-        resp.body = json.dumps(jsend.success({
-            'submission_id': submission.id,
-            'job_ids': [job.id for job in jobs_scheduled]
-        }))
-        resp.status = falcon.HTTP_200
+            # return adu dispatcher id
+            resp.body = json.dumps(jsend.success({
+                'submission_id': submission.id,
+                'job_ids': [job.id for job in jobs_scheduled]
+            }))
+            resp.status = falcon.HTTP_200
+        except Exception as err:
+            if submission is not None and hasattr(submission, 'id') and isinstance(submission.id, int):
+                self.session.delete(submission)
+                self.session.commit()
+            resp.body = json.dumps(jsend.error("{0}".format(err)))
+            resp.status = falcon.HTTP_500
 
 def create_submission(db_session, data):
     # helper function for creating a submission
