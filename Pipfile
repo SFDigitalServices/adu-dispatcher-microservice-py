@@ -4,6 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+fakeredis = "*"
+pylint = "*"
 
 [packages]
 falcon = "*"
@@ -16,6 +18,7 @@ pytest-cov = "*"
 alembic = "*"
 psycopg2 = "*"
 sqlalchemy = "*"
+rq = "*"
 
 [requires]
 python_version = "3.7"

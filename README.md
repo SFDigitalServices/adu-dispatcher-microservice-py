@@ -11,8 +11,26 @@ SFDS microservice.py jumpstarts your next python-based microservice. It consists
 * Python3 
 ([Mac OS X](https://docs.python-guide.org/starting/install3/osx/) / [Windows](https://www.stuartellis.name/articles/python-development-windows/))
 * Pipenv & Virtual Environments ([virtualenv](https://docs.python-guide.org/dev/virtualenvs/#virtualenvironments-ref) / [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/))
+* [Postgres](https://www.postgresql.org)
+* [Redis](https://redis.io)
 
 ## Get started
+
+Install Postgres (if needed)
+*(with Homebrew)*
+> $ brew install postgresql
+
+Create database
+> $ createdb adu_dispatcher
+
+Install Redis (if needed)
+*(with Homebrew)*
+> $ brew install redis
+
+Set Postgresql and Redis connection string environment variables
+> $ export DATABASE\_URL=postgresql://localhost/adu\_dispatcher
+
+> $ export REDIS_URL=redis://localhost:6379
 
 Install Pipenv (if needed)
 > $ pip install --user pipenv
@@ -63,11 +81,16 @@ Psst: Don’t forget to upload the fresh copy of your new repo back up to git:
 
 ## Development 
 Auto-reload on code changes
-> $ pipenv run gunicorn --reload 'service.microservice:start_service()'
+> $ ACCESS_KEY=123456 pipenv run gunicorn --reload 'service.microservice:start_service()'
 
 Code coverage command with missing statement line numbers  
 > $ pipenv run python -m pytest --cov=service tests/ --cov-report term-missing
 
+Create a migration
+> alembic revision -m "Add a column"
+
+Run DB migrations
+> alembic upgrade head
 
 ## Continuous integration
 * CircleCI builds fail when trying to run coveralls.
