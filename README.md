@@ -36,7 +36,7 @@ Install Pipenv (if needed)
 > $ pip install --user pipenv
 
 Install included packages
-> $ pipenv install
+> $ pipenv install --dev
 
 Set ACCESS_KEY environment var and start WSGI Server
 > $ ACCESS_KEY=123456 pipenv run gunicorn 'service.microservice:start_service()'
