@@ -92,6 +92,10 @@ Create a migration
 Run DB migrations
 > alembic upgrade head
 
+Set up git hook scripts with pre-commit
+> $ pipenv run pre-commit install
+
+
 ## Continuous integration
 * CircleCI builds fail when trying to run coveralls.
     1. Log into coveralls.io to obtain the coverall token for your repo.
