@@ -2,7 +2,7 @@ import os
 import requests
 import time
 import json
-from redis import Redis
+import redis
 from rq import Queue
 from service.resources.db_session import create_session
 import service.resources.submission as submission
@@ -51,7 +51,7 @@ def schedule(submission_obj, systems_dict=external_systems):
 
 def get_queue():
     # gets the queue
-    return Queue(connection=Redis()) # pragma: no cover
+    return Queue(connection=redis.from_url(os.environ.get("REDIS_URL"))) # pragma: no cover
 
 def generate_payload(submission_obj, payload_template):
     # TODO: generate payload from template
