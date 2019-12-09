@@ -39,11 +39,15 @@ class SQLAlchemySessionManager:
     """
 
     def __init__(self, Session):
-        self.Session = Session
+        self.Session = Session # pylint: disable=invalid-name
 
     def process_resource(self, req, resp, resource, params):
+        # pylint: disable=unused-argument
+        """attach a db session for every resource"""
         resource.session = self.Session()
 
     def process_response(self, req, resp, resource, req_succeeded):
+        # pylint: disable=no-self-use, unused-argument
+        """close db session for every resource"""
         if hasattr(resource, 'session'):
             resource.session.close()
