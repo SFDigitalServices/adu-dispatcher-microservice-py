@@ -2,16 +2,15 @@
 """Tests for microservice"""
 import os
 import json
+from urllib.parse import urlencode
+from unittest.mock import patch
 import jsend
 import pytest
 from falcon import testing
-import service.microservice
-from urllib.parse import urlencode
 from fakeredis import FakeStrictRedis
 from redis import Redis
 from rq import Queue
-from rq.registry import FinishedJobRegistry
-from unittest.mock import patch
+import service.microservice
 from service.resources.jobs import schedule
 import service.resources.submission as submission
 from service.resources.db_session import create_session
@@ -36,7 +35,8 @@ def client():
 
 @pytest.fixture()
 def client_no_db():
-    with patch.dict(os.environ,{'DATABASE_URL':'postgresql://localhost/not_a_db'}):
+    """ client fixture for simulating db down """
+    with patch.dict(os.environ, {'DATABASE_URL':'postgresql://localhost/not_a_db'}):
         return testing.TestClient(app=service.microservice.start_service(), headers=CLIENT_HEADERS)
 
 @pytest.fixture()
@@ -56,10 +56,12 @@ def mock_env_no_access_key(monkeypatch):
 
 @pytest.fixture
 def no_queue():
+    """ simulates redis down """
     return Queue(is_async=False, connection=Redis(host='fake_redis_host'))
 
 @pytest.fixture
 def mock_external_system_env(monkeypatch):
+    """ fixture to set external system urls """
     monkeypatch.setenv("DBI_SYSTEM_URL", "http://dbi.com")
     monkeypatch.setenv("FIRE_SYSTEM_URL", "http://fire.com")
     monkeypatch.setenv("PLANNING_SYSTEM_URL", "http://planning.com")
@@ -98,6 +100,8 @@ def test_default_error(client, mock_env_access_key):
     assert json.loads(response.content) == expected_msg_error
 
 def test_create_submission(client, queue, mock_env_access_key, mock_external_system_env):
+    # pylint: disable=unused-argument
+    """ Test submission post """
     body = {
         'data': '{"foo":"bar"}'
     }
@@ -109,23 +113,33 @@ def test_create_submission(client, queue, mock_env_access_key, mock_external_sys
             mock_post.return_value.status_code = 200
             mock_post.return_value.text = EXTERNAL_RESPONSE
             # mock_post.return_value.json.return_value = json.loads(EXTERNAL_RESPONSE)
-            response = client.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+            response = client.simulate_post('/submissions',\
+                    body=urlencode(body),\
+                    headers=HEADERS)
     assert response.status_code == 200
 
     response_json = json.loads(response.text)
     assert isinstance(response_json["data"]["submission_id"], int)
 
-    """Test submission request with no ACCESS_KEY in header"""
+    # Test submission request with no ACCESS_KEY in header
     client_no_access_key = testing.TestClient(service.microservice.start_service())
-    response = client_no_access_key.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+    response = client_no_access_key.simulate_post('/submissions',\
+                body=urlencode(body),\
+                headers=HEADERS)
     assert response.status_code == 403
 
 def test_schedule_submission_continuation(queue, mock_external_system_env):
-    # tests the case where a submission already exists in the db and has an outstanding external dispatch
+    # pylint: disable=unused-argument
+    """
+        tests the case where a submission already exists in the db
+        and has an outstanding external dispatch
+    """
     session = create_session()
-    db = session()
-    s = submission.create_submission(db_session=db, data={"sample": "12345"})
-    submission.create_external_id(db_session=db, submission_id=s.id, external_system="dbi", external_id=123)
+    db = session() # pylint: disable=invalid-name
+    s = submission.create_submission(db_session=db, data={"sample": "12345"}) # pylint: disable=invalid-name
+    s.create_external_id(db_session=db,\
+            external_system="dbi",\
+            external_id=123)
 
     with patch('service.resources.jobs.get_queue') as mock_queue:
         mock_queue.return_value = queue
@@ -134,14 +148,15 @@ def test_schedule_submission_continuation(queue, mock_external_system_env):
             mock_post.return_value.status_code = 200
             mock_post.return_value.text = EXTERNAL_RESPONSE
 
-            jobs_scheduled = schedule(s)
+            jobs_scheduled = schedule(s, None)
 
     # two jobs should be scheduled, planning and fire
     assert len(jobs_scheduled) == 2
     db.close()
 
 def test_external_404(client, queue, mock_env_access_key, mock_external_system_env):
-    # test that failed jobs get rescheduled
+    # pylint: disable=unused-argument
+    """test that failed jobs get rescheduled"""
     body = {
         'data': '{"foo": "foo"}'
     }
@@ -176,10 +191,13 @@ def test_external_404(client, queue, mock_env_access_key, mock_external_system_e
                 "max_retry": 3
             }
         }
-        with patch('service.resources.submission.jobs.external_systems', mock_external_systems):
+
+        with patch('service.resources.submission.jobs.EXTERNAL_SYSTEMS', mock_external_systems):
             with patch('service.resources.jobs.requests.post') as mock_post:
                 mock_post.return_value.status_code = 404
-                response = client.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+                response = client.simulate_post('/submissions',\
+                        body=urlencode(body),\
+                        headers=HEADERS)
 
             assert response.status_code == 200
 
@@ -188,21 +206,23 @@ def test_external_404(client, queue, mock_env_access_key, mock_external_system_e
             assert len(response_json["data"]["job_ids"]) == len(mock_external_systems.keys())
 
 def test_db_down(client_no_db, queue, mock_env_access_key, mock_external_system_env):
-    # test when unable to connect to db
+    # pylint: disable=unused-argument
+    """test when unable to connect to db"""
     body = {
         'data': '{"test": "test_db_down"}'
     }
 
-    response = client_no_db.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+    response = client_no_db.simulate_post('/submissions', body=urlencode(body), headers=HEADERS)
     assert response.status_code == 500
 
 def test_redis_down(client, no_queue, mock_env_access_key, mock_external_system_env):
-    # test when unable to connect to redis
+    # pylint: disable=unused-argument
+    """test when unable to connect to redis"""
     body = {
         'data': 'test_redis_down'
     }
 
     with patch('service.resources.jobs.get_queue') as mock_queue:
         mock_queue.return_value = queue
-        response = client.simulate_post('/submissions', body = urlencode(body), headers = HEADERS)
+        response = client.simulate_post('/submissions', body=urlencode(body), headers=HEADERS)
         assert response.status_code == 500
