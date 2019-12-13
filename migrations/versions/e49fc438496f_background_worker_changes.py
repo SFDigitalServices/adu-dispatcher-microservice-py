@@ -1,3 +1,4 @@
+# pylint: skip-file
 """Data model changes to support background workers
 
     * add completed column to submission table

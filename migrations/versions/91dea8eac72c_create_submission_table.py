@@ -1,3 +1,4 @@
+# pylint: skip-file
 """create submission table
 
 Revision ID: 91dea8eac72c
