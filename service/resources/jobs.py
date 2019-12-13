@@ -4,7 +4,7 @@ import os
 import time
 import json
 import requests
-from redis import Redis
+import redis
 from rq import Queue
 from service.resources.db_session import create_session
 
@@ -56,8 +56,8 @@ def schedule(submission_obj, systems_dict):
     return jobs
 
 def get_queue():
-    """gets the queue"""
-    return Queue(connection=Redis()) # pragma: no cover
+    """ gets the queue """
+    return Queue(connection=redis.from_url(os.environ.get("REDIS_URL"))) # pragma: no cover
 
 def generate_payload(submission_obj, payload_template):
     # pylint: disable=unused-argument
