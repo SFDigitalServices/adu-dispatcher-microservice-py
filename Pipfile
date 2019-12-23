@@ -19,7 +19,8 @@ pytest-cov = "*"
 alembic = "*"
 psycopg2 = "*"
 sqlalchemy = "*"
-rq = "*"
+redis = "*"
+celery = "*"
 
 [requires]
 python_version = "3.7"
