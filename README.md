@@ -38,6 +38,12 @@ Install Pipenv (if needed)
 Install included packages
 > $ pipenv install --dev
 
+*If you get a psycopg2 error, it may be due to the install being unable to find openssl libraries installed via homebrew.  Try the following command:*
+> $ env LDFLAGS="-I/usr/local/opt/openssl/include -L/usr/local/opt/openssl/lib" pipenv install --dev
+
+Run DB migrations
+> pipenv run alembic upgrade head
+
 Set ACCESS_KEY environment var and start WSGI Server
 > $ ACCESS_KEY=123456 pipenv run gunicorn 'service.microservice:start_service()'
 
