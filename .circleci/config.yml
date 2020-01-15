@@ -11,10 +11,13 @@ jobs:
       - image: circleci/python:3.7.2
         environment:
           DATABASE_URL: postgres://circleci@127.0.0.1:5432/circle_test
+          REDIS_URL: redis://redis@127.0.0.1:6379
       - image: circleci/postgres:11.2
         environment:
           POSTGRES_USER: circleci
           POSTGRES_DB: circle_test
+      - image: circleci/redis:5.0.4
+
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
