@@ -38,14 +38,23 @@ Install Pipenv (if needed)
 Install included packages
 > $ pipenv install --dev
 
+*If you get a psycopg2 error, it may be due to the install being unable to find openssl libraries installed via homebrew.  Try the following command:*
+> $ env LDFLAGS="-I/usr/local/opt/openssl/include -L/usr/local/opt/openssl/lib" pipenv install --dev
+
+Run DB migrations
+> pipenv run alembic upgrade head
+
 Set ACCESS_KEY environment var and start WSGI Server
 > $ ACCESS_KEY=123456 pipenv run gunicorn 'service.microservice:start_service()'
+
+Start celery worker
+> $ pipenv run celery worker
 
 Run Pytest
 > $ pipenv run python -m pytest
 
 Get code coverage report
-> $ pipenv run python -m pytest --cov=service tests/ --cov-fail-under=100
+> $ pipenv run python -m pytest --cov=service --cov=tasks tests/ --cov-fail-under=100
 
 Open with cURL or web browser
 > $ curl --header "ACCESS_KEY: 123456" http://127.0.0.1:8000/welcome
@@ -84,7 +93,7 @@ Auto-reload on code changes
 > $ ACCESS_KEY=123456 pipenv run gunicorn --reload 'service.microservice:start_service()'
 
 Code coverage command with missing statement line numbers  
-> $ pipenv run python -m pytest --cov=service tests/ --cov-report term-missing
+> $ pipenv run python -m pytest -s --cov=service --cov=tasks tests/ --cov-report term-missing
 
 Create a migration
 > alembic revision -m "Add a column"

@@ -1,5 +1,6 @@
 """Submission Data Model"""
 
+# import sys, traceback
 import json
 import jsend
 import falcon
@@ -7,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy as sa
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-import service.resources.jobs as jobs
+import tasks
 from .hooks import validate_access
 
 # from pprint import pprint
@@ -58,8 +59,8 @@ class SubmissionResource:
             # log submission to database
             submission = create_submission(self.session, req.params) # pylint: disable=no-member
             # schedule dispatch to external systems
-            jobs_scheduled = jobs.schedule(submission_obj=submission,\
-                systems_dict=jobs.EXTERNAL_SYSTEMS)
+            jobs_scheduled = tasks.schedule(submission_obj=submission,\
+                systems_dict=tasks.EXTERNAL_SYSTEMS)
 
             # return adu dispatcher id
             resp.body = json.dumps(jsend.success({
@@ -73,6 +74,11 @@ class SubmissionResource:
                     and isinstance(submission.id, int)):
                 self.session.delete(submission) # pylint: disable=no-member
                 self.session.commit() # pylint: disable=no-member
+            # print("caught error in submission on_post")
+            # print("traceback:")
+            # traceback.print_exc(file=sys.stdout)
+            print("error:")
+            print("{0}".format(err))
             resp.body = json.dumps(jsend.error("{0}".format(err)))
             resp.status = falcon.HTTP_500
 
