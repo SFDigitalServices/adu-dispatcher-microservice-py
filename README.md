@@ -47,6 +47,9 @@ Run DB migrations
 Set ACCESS_KEY environment var and start WSGI Server
 > $ ACCESS_KEY=123456 pipenv run gunicorn 'service.microservice:start_service()'
 
+Start celery worker
+> $ pipenv run celery worker
+
 Run Pytest
 > $ pipenv run python -m pytest
 
