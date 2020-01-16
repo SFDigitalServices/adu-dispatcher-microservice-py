@@ -252,7 +252,8 @@ def test_external_404(mock_env_access_key, mock_external_system_env):
     celery_inspect = queue.control.inspect()
     jobs_reserved = celery_inspect.reserved()
     # nothing left in the queue since gave up after 3 retries
-    assert jobs_reserved is None
+    for worker in jobs_reserved:
+        assert not jobs_reserved[worker]
 
     # the submission still exists in the db, but with no
     # associated external ids since external posts were unsuccessful
