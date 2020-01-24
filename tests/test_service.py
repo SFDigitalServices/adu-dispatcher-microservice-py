@@ -26,7 +26,7 @@ EXTERNAL_RESPONSE = """{
     }
 }"""
 
-HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+HEADERS = {"Content-Type": "application/json"}
 
 # shortening the timeout
 MOCK_EXTERNAL_SYSTEMS = {
@@ -134,7 +134,7 @@ def test_create_submission(client, mock_env_access_key, mock_external_system_env
         mock_post.return_value.text = EXTERNAL_RESPONSE
 
         response = client.simulate_post('/submissions',\
-                body=urlencode(body),\
+                body=json.dumps(body),\
                 headers=HEADERS)
     assert response.status_code == 200
 
@@ -187,7 +187,7 @@ def test_submission_post_error(client, mock_env_access_key, mock_external_system
     with patch('tasks.schedule') as mock_schedule:
         mock_schedule.side_effect = Exception("Generic Error")
 
-        response = client.simulate_post('/submissions', body=urlencode(body), headers=HEADERS)
+        response = client.simulate_post('/submissions', body=json.dumps(body), headers=HEADERS)
         assert response.status_code == 500
 
     # clear out the queue
