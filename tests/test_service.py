@@ -159,7 +159,7 @@ def test_schedule_submission_continuation(mock_external_system_env):
     """
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, data={"sample": "12345"}) # pylint: disable=invalid-name
+    s = submission.create_submission(db_session=db, json_data={"sample": "12345"}) # pylint: disable=invalid-name
     s.create_external_id(db_session=db,\
             external_system="dbi",\
             external_id=123)
@@ -199,9 +199,9 @@ def test_tasks(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, data={"sample": "test_tasks"}) # pylint: disable=invalid-name
+    s = submission.create_submission(db_session=db, json_data={"sample": "test_tasks"}) # pylint: disable=invalid-name
 
-    with patch('tasks.EXTERNAL_SYSTEMS', MOCK_EXTERNAL_SYSTEMS):
+    with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
         with patch('tasks.requests.post') as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.text = EXTERNAL_RESPONSE
@@ -236,9 +236,9 @@ def test_external_404(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, data={"sample": "test_external_404"}) # pylint: disable=invalid-name
+    s = submission.create_submission(db_session=db, json_data={"sample": "test_external_404"}) # pylint: disable=invalid-name
 
-    with patch('tasks.EXTERNAL_SYSTEMS', MOCK_EXTERNAL_SYSTEMS):
+    with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
         with patch('tasks.requests.post') as mock_post:
             mock_post.return_value.status_code = 404
 
