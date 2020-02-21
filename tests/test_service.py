@@ -237,7 +237,7 @@ def test_schedule_submission_continuation(mock_external_system_env):
         with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
             jobs_scheduled = tasks.schedule(s, MOCK_EXTERNAL_SYSTEMS)
 
-    # two jobs should be scheduled, planning and fire and fake_department
+    # two jobs should be scheduled, planning and fire
     assert len(jobs_scheduled) == 2
     db.close()
 
