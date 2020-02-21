@@ -9,6 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import tasks
+from service.resources.external_systems import MAP
 from .hooks import validate_access
 
 # from pprint import pprint
@@ -56,11 +57,13 @@ class SubmissionResource:
         """Handle Submission POST requests"""
         submission = None
         try:
+            json_params = req.media
+            validate(json_params)
             # log submission to database
-            submission = create_submission(self.session, req.media) # pylint: disable=no-member
+            submission = create_submission(self.session, json_params) # pylint: disable=no-member
             # schedule dispatch to external systems
             jobs_scheduled = tasks.schedule(submission_obj=submission,\
-                systems_dict=tasks.EXTERNAL_SYSTEMS)
+                systems_dict=MAP)
 
             # return adu dispatcher id
             resp.body = json.dumps(jsend.success({
@@ -83,9 +86,15 @@ class SubmissionResource:
             resp.body = json.dumps(jsend.error("{0}".format(err)))
             resp.status = falcon.HTTP_500
 
-def create_submission(db_session, data):
+def create_submission(db_session, json_data):
     '''helper function for creating a submission'''
-    submission = Submission(data=json.dumps(data))
+    submission = Submission(data=json.dumps(json_data))
     db_session.add(submission)
     db_session.commit()
     return submission
+
+def validate(json_data):
+    '''enforce validation rules'''
+    if "block" not in json_data or not json_data["block"] or\
+                "lot" not in json_data or not json_data["lot"]:
+        raise Exception("Block and lot are required fields")
