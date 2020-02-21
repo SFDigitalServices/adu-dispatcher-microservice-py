@@ -68,7 +68,8 @@ class SubmissionResource:
             # return adu dispatcher id
             resp.body = json.dumps(jsend.success({
                 'submission_id': submission.id,
-                'job_ids': [job.id for job in jobs_scheduled]
+                'job_ids': [job.id for job in jobs_scheduled],
+                'params': json.dumps(req.media)
             }))
             resp.status = falcon.HTTP_200
         except Exception as err: # pylint: disable=broad-except
