@@ -10,7 +10,6 @@ import requests
 from kombu import serialization
 import celeryconfig
 from service.resources.db_session import create_session
-from service.resources.external_systems import MAP
 
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_INTERVAL = 0
@@ -37,6 +36,8 @@ def dispatch(self, external_code, external_system, submission_obj):
 
     try:
         # send payload to external system
+        if not "env_var" in external_system:
+            raise ValueError('env_var required in mapping for external api calls')
         url = os.getenv(external_system["env_var"], None)
         if not url:
             raise ValueError('No url set for ' + external_system["env_var"]) # pragma: no cover
@@ -89,6 +90,10 @@ def send_csv(self, external_code, external_system, submission_obj):
 
     # email it
 
+    # queue up dependent systems
+    if "dependants" in external_system and len(external_system["dependants"]) > 0:
+        schedule(submission_obj, external_system["dependants"])
+
 def create_csv(submission_obj, template):
     # pylint: disable=unused-argument
     """
@@ -134,18 +139,17 @@ def schedule(submission_obj, systems_dict):
         queues jobs to send data to external systems
         returns array of jobs which were scheduled
     """
-    if systems_dict is None:
-        systems_dict = MAP
 
     systems_todo = systems_dict.keys()
     systems_done = [external_id.external_system for external_id in submission_obj.external_ids]
     jobs = []
+
     for todo in systems_todo:
         if todo not in systems_done:
             print("schedule:submission_id - " + str(submission_obj.id) + ":system - " + todo)
 
             # determine if send csv or making api call
-            if systems_dict[todo]['type'] == 'csv':
+            if 'type' in systems_dict[todo] and systems_dict[todo]['type'] == 'csv':
                 print("scheduling csv")
                 # csv
                 job = send_csv.apply_async((todo, systems_dict[todo], submission_obj),\
@@ -166,7 +170,7 @@ def schedule(submission_obj, systems_dict):
                             'interval_start': systems_dict.get('timeout', DEFAULT_RETRY_INTERVAL)
                         })
             jobs.append(job)
-        elif systems_dict[todo]["dependants"] and len(systems_dict[todo]["dependants"]) > 0:
+        elif "dependants" in systems_dict[todo] and len(systems_dict[todo]["dependants"]) > 0:
             # external system already done, check dependants
             jobs = jobs + schedule(submission_obj, systems_dict[todo]["dependants"])
     return jobs
