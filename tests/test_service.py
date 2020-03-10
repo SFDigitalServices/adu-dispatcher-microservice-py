@@ -1,18 +1,18 @@
 # pylint: disable=redefined-outer-name
 """Tests for microservice"""
 import os
+import os.path
 import json
 from unittest.mock import patch
-# import time
 # import pprint
 import jsend
 import pytest
 from falcon import testing
 import tasks
 import service.microservice
-import service.resources.submission as submission
+from service.resources.submission_model import Submission, ExternalId, create_submission
 from service.resources.db_session import create_session
-from tasks import celery_app as queue, dispatch, send_csv
+from tasks import celery_app as queue, dispatch
 
 CLIENT_HEADERS = {
     "ACCESS_KEY": "1234567"
@@ -56,6 +56,7 @@ MOCK_EXTERNAL_SYSTEMS = {
         }
     },
     "planning": {
+        "type": "api",
         "env_var": "PLANNING_SYSTEM_URL",
         "template": {
             "name": "planning template"
@@ -78,8 +79,8 @@ MOCK_EXTERNAL_SYSTEMS = {
 STANDARD_SUBMISSION_JSON = {
     "first_name": "bob",
     "last_name": "smith",
-    "block": "1",
-    "lot": "2"
+    "block": 1,
+    "lot": 2
 }
 
 @pytest.fixture()
@@ -225,7 +226,7 @@ def test_schedule_submission_continuation(mock_external_system_env):
     print("test_schedule_submission_continuation")
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
+    s = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
     s.create_external_id(db_session=db,\
             external_system="dbi",\
             external_id=123)
@@ -237,8 +238,8 @@ def test_schedule_submission_continuation(mock_external_system_env):
         with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
             jobs_scheduled = tasks.schedule(s, MOCK_EXTERNAL_SYSTEMS)
 
-    # two jobs should be scheduled, planning and fire
-    assert len(jobs_scheduled) == 2
+    # two jobs should be scheduled, planning
+    assert len(jobs_scheduled) == 1
     db.close()
 
     # clear out the queue
@@ -265,7 +266,7 @@ def test_tasks(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
+    s = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
 
     with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
         with patch('tasks.requests.post') as mock_post:
@@ -278,12 +279,12 @@ def test_tasks(mock_env_access_key, mock_external_system_env):
                     submission_obj=s).apply()
 
     # verify submission exists in db
-    sub = db.query(submission.Submission).filter(submission.Submission.id == s.id)
+    sub = db.query(Submission).filter(Submission.id == s.id)
     assert sub is not None
 
     # verify external post was recorded in db
-    ext_ids = db.query(submission.ExternalId)\
-            .filter(submission.ExternalId.submission_id == s.id).all()
+    ext_ids = db.query(ExternalId)\
+            .filter(ExternalId.submission_id == s.id).all()
     assert len(ext_ids) == 1
     assert ext_ids[0].external_system == "planning"
 
@@ -296,7 +297,7 @@ def test_external_404(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
+    s = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
 
     with patch('service.resources.external_systems.MAP', MOCK_EXTERNAL_SYSTEMS):
         with patch('tasks.requests.post') as mock_post:
@@ -320,11 +321,11 @@ def test_external_404(mock_env_access_key, mock_external_system_env):
 
     # the submission still exists in the db, but with no
     # associated external ids since external posts were unsuccessful
-    sub = db.query(submission.Submission).filter(submission.Submission.id == s.id).first()
+    sub = db.query(Submission).filter(Submission.id == s.id).first()
     assert sub is not None
 
-    ext_ids = db.query(submission.ExternalId)\
-            .filter(submission.ExternalId.submission_id == s.id).all()
+    ext_ids = db.query(ExternalId)\
+            .filter(ExternalId.submission_id == s.id).all()
     assert len(ext_ids) == 0
 
     # cleanup
@@ -345,7 +346,7 @@ def test_missing_env_var(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
+    s = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
     with patch('tasks.requests.post') as mock_post:
         mock_post.return_value.status_code = 200
         mock_post.return_value.text = EXTERNAL_RESPONSE
@@ -355,8 +356,8 @@ def test_missing_env_var(mock_env_access_key, mock_external_system_env):
                 submission_obj=s).apply()
 
     # check db that no external requests were recorded
-    ext_ids = db.query(submission.ExternalId)\
-            .filter(submission.ExternalId.submission_id == s.id).all()
+    ext_ids = db.query(ExternalId)\
+            .filter(ExternalId.submission_id == s.id).all()
     assert len(ext_ids) == 0
 
     # cleanup
@@ -369,16 +370,29 @@ def test_create_csv(mock_env_access_key, mock_external_system_env):
 
     session = create_session()
     db = session() # pylint: disable=invalid-name
-    s = submission.create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON) # pylint: disable=invalid-name
+    submission1 = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON)
+    submission2 = create_submission(db_session=db, json_data=STANDARD_SUBMISSION_JSON)
 
-    external_code = "dbi"
-    send_csv.s(external_code,\
-            external_system=MOCK_EXTERNAL_SYSTEMS[external_code],\
-            submission_obj=s).apply()
+    current_num_files = file_count_dir(tasks.CSV_DIR)
+    tasks.outbound_csv.s().apply()
+    new_num_files = file_count_dir(tasks.CSV_DIR)
 
-    file_path = os.path.join(tasks.CSV_DIR, str(s.id) + ".csv")
-    assert os.path.exists(file_path) == 1
+    assert current_num_files == new_num_files - 1
 
+    db.refresh(submission1)
+    db.refresh(submission2)
+
+    assert submission1.csv_date_processed is not None
+    assert submission2.csv_date_processed is not None
     # cleanup
     db.close()
-    os.remove(file_path)
+
+def file_count_dir(directory_path):
+    """count number of files in directory"""
+    return len([name for name in os.listdir(directory_path)\
+            if os.path.isfile(os.path.join(directory_path, name))])
+
+def test_process_csv_response(mock_env_access_key, mock_external_system_env):
+    # pylint: disable=unused-argument
+    """test processing inbound csv"""
+    tasks.inbound_csv.s().apply()

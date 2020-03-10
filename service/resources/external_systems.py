@@ -3,7 +3,9 @@
 MAP = {
     "dbi":{
         "type": "csv",
-        "email": "csv@fake-email.com",
+        "ftp_server_var": "DBI_FTP_SERVER",
+        "ftp_username_var": "DBI_FTP_USER",
+        "ftp_password_var": "DBI_FTP_PASSWD",
         "template": [
             {"name": "Own the property", "id": "do_you_own_the_property"},
             {"name": "Build ADU myself", "id": "i_am_building_myself"},
